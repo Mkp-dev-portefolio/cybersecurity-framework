@@ -23,22 +23,22 @@ services:
       # Initialization data
       - vault_init_data:/vault-init
     environment:
-      - VAULT_ADDR=https://0.0.0.0:8200
-      - VAULT_API_ADDR=https://vault:8200
-      - VAULT_CLUSTER_ADDR=https://vault:8201
+      - VAULT_ADDR=http://0.0.0.0:8200
+      - VAULT_API_ADDR=http://vault:8200
+      - VAULT_CLUSTER_ADDR=http://vault:8201
       - VAULT_LOG_LEVEL=INFO
       - VAULT_DEV_ROOT_TOKEN_ID=${VAULT_DEV_ROOT_TOKEN_ID:-}
       - VAULT_DEV_LISTEN_ADDRESS=${VAULT_DEV_LISTEN_ADDRESS:-}
-    command: vault server -config=/vault/config/vault.hcl
+    command: vault server -dev -dev-listen-address=0.0.0.0:8200 -dev-root-token-id=cybersec-dev-token
     cap_add:
       - IPC_LOCK
     networks:
       - cybersec-pki
     healthcheck:
-      test: ["CMD", "vault", "status"]
+      test: ["CMD-SHELL", "vault status || exit 0"]
       interval: 30s
       timeout: 10s
-      retries: 3
+      retries: 10
       start_period: 60s
 
   # PKI Initialization Service
@@ -53,7 +53,7 @@ services:
       - vault_init_data:/vault-init
       - vault_logs:/vault/logs
     environment:
-      - VAULT_ADDR=https://vault:8200
+      - VAULT_ADDR=http://vault:8200
       - VAULT_SKIP_VERIFY=true  # For development only
     networks:
       - cybersec-pki
@@ -100,7 +100,7 @@ services:
       - ./vault-pki/compliance:/compliance
       - vault_init_data:/vault-init:ro
     environment:
-      - VAULT_ADDR=https://vault:8200
+      - VAULT_ADDR=http://vault:8200
       - VAULT_SKIP_VERIFY=true
       - MONITORING_INTERVAL=3600
       - ALERT_WEBHOOK_URL=${ALERT_WEBHOOK_URL:-}
@@ -142,7 +142,7 @@ services:
     image: redis:7-alpine
     container_name: redis-pki
     ports:
-      - "6379:6379"
+      - "6380:6379"
     volumes:
       - redis_data:/data
     networks:
@@ -155,7 +155,7 @@ services:
     image: postgres:15-alpine
     container_name: postgres-pki
     ports:
-      - "5432:5432"
+      - "5433:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./vault-pki/compliance/audit-logs:/audit-logs

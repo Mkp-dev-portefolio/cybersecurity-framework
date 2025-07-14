@@ -5,7 +5,7 @@
 set -euo pipefail
 
 # Configuration
-VAULT_ADDR="${VAULT_ADDR:-https://vault:8200}"
+VAULT_ADDR="${VAULT_ADDR:-http://vault:8200}"
 VAULT_INIT_FILE="/vault-init/init-keys.txt"
 VAULT_TOKEN_FILE="/vault-init/vault-token"
 LOG_FILE="/vault/logs/pki-setup.log"
@@ -32,42 +32,13 @@ done
 
 log "Vault is ready, proceeding with setup"
 
-# Initialize Vault if not already done
-if ! vault status | grep -q "Initialized.*true"; then
-    log "Initializing Vault with 5 key shares, 3 key threshold"
-    vault operator init \
-        -key-shares=5 \
-        -key-threshold=3 \
-        -format=json > "$VAULT_INIT_FILE" || error_exit "Failed to initialize Vault"
-    
-    # Extract unseal keys and root token
-    UNSEAL_KEYS=$(jq -r '.unseal_keys_b64[]' "$VAULT_INIT_FILE")
-    ROOT_TOKEN=$(jq -r '.root_token' "$VAULT_INIT_FILE")
-    
-    # Unseal Vault
-    log "Unsealing Vault..."
-    counter=0
-    for key in $UNSEAL_KEYS; do
-        if [ $counter -lt 3 ]; then
-            vault operator unseal "$key" || error_exit "Failed to unseal with key $((counter+1))"
-            counter=$((counter+1))
-        fi
-    done
-    
-    # Save root token
-    echo "$ROOT_TOKEN" > "$VAULT_TOKEN_FILE"
-    chmod 600 "$VAULT_TOKEN_FILE"
-    
-    export VAULT_TOKEN="$ROOT_TOKEN"
-    log "Vault initialized and unsealed successfully"
-else
-    log "Vault already initialized, loading existing token"
-    if [ -f "$VAULT_TOKEN_FILE" ]; then
-        export VAULT_TOKEN=$(cat "$VAULT_TOKEN_FILE")
-    else
-        error_exit "Vault is initialized but no token file found"
-    fi
-fi
+# For dev mode, use the pre-configured token
+log "Using Vault dev mode with pre-configured token"
+ROOT_TOKEN="cybersec-dev-token"
+echo "$ROOT_TOKEN" > "$VAULT_TOKEN_FILE"
+chmod 600 "$VAULT_TOKEN_FILE"
+export VAULT_TOKEN="$ROOT_TOKEN"
+log "Vault token configured for dev mode"
 
 # Enable audit logging if not already enabled
 log "Configuring audit logging..."

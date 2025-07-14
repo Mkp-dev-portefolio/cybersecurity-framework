@@ -6,14 +6,10 @@ storage "file" {
   path = "/vault/data"
 }
 
-# HTTPS API listener with mTLS
+# HTTP API listener for initial setup (switch to HTTPS in production)
 listener "tcp" {
   address       = "0.0.0.0:8200"
-  tls_cert_file = "/vault/certs/vault-server.crt"
-  tls_key_file  = "/vault/certs/vault-server.key"
-  tls_client_ca_file = "/vault/certs/vault-ca.crt"
-  tls_require_and_verify_client_cert = false  # Set to true after initial setup
-  tls_min_version = "tls12"
+  tls_disable   = true  # Disable TLS for initial setup
 }
 
 # Vault cluster configuration

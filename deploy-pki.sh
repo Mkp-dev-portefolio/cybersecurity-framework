@@ -108,7 +108,6 @@ EOF
         -CAcreateserial \
         -out "$CERTS_DIR/vault-server.crt" \
         -days 365 \
-        -extensions v3_req \
         -extfile "$CERTS_DIR/vault-server.ext"
     
     # Set permissions
@@ -127,7 +126,9 @@ deploy_infrastructure() {
     
     # Load environment variables
     if [ -f "$ENV_FILE" ]; then
-        export $(cat "$ENV_FILE" | grep -v '^#' | xargs)
+        set -a
+        source "$ENV_FILE"
+        set +a
     fi
     
     # Deploy with Docker Compose
