@@ -1,0 +1,57 @@
+agents:
+
+  github:
+    name: Github Issue Retriever
+    description: An agent that can retrieve GitHub issues given a repository like <owner>/<repo>
+    instructions: |
+      Given a GitHub repository in the form of <owner>/<repo> or http://github.com/<owner>/<repo>,
+      retrieve the list of open issues including all their attributes like title, number, labels.
+      Make sure to not confuse issues with pull requests, omit pull requests entirely.
+      When listing issues, call your tools no more than once.
+
+      Return as many issues as you can with a single call to the tool. Do not call the tool with different labels.
+
+      If you don't know the value for a parameter when calling a tool, just omit it.
+    tools:
+      - mcp/github-mcp-server:list_issues
+    model:
+      name: ${MODEL_NAME}
+      provider: ${MODEL_PROVIDER}
+
+  writer:
+    name: Writer
+    description: An agent that can summarize and categorize list of GitHub issues.
+    instructions: |
+      You are an expert in writing and summarizing content. Use your writing skills to create a concise summary of GitHub issues.
+      You will receive a list of GitHub issues in a structured CSV format, including their title, issue number, and labels.
+      Your task is to summarize these issues, categorize them, and format the output in Markdown.
+      Additionally, classify the issues into categories such as "bug", "feature request",
+      or "documentation". Always include the issue links referenced in the summary, as markdown.
+      Add an executive summary at the top of the output, which should be a brief overview of the issues, with a sentiment analysis of the issues.
+    model:
+      name: ${MODEL_NAME}
+      provider: ${MODEL_PROVIDER}
+
+teams:
+  coordinator:
+    name: Coordinator
+    mode: coordinate
+    members: [github, writer]
+    instructions: |
+      When given a GitHub repository, which will look like <owner>/<repo> or http://github.com/<owner>/<repo>:
+
+      - Ask your team mate to find the issues that are open
+      - Tell the writer the summarize them as Markdown
+
+      When communicating with the writer, be very explicit about the criteria for its output,
+      including length, structure, formatting, and other constraints. Remind the
+      writer to use Markdown format.
+
+      Accept the writer's first response and do not ask it to redo the work,
+      even if it is imperfect. If it needs correction, do it yourself.
+
+      Use your team mates to perform all the required tasks, coordinate between them.
+      Always include the github tool whole output in your messages to the writer.
+    model:
+      name: ${MODEL_NAME}
+      provider: ${MODEL_PROVIDER}

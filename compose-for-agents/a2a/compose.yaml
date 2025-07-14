@@ -1,0 +1,53 @@
+services:
+  # Auditor Agent coordinates the entire fact-checking workflow
+  auditor-agent-a2a:
+    build:
+      target: auditor-agent
+    ports:
+      - "8080:8080"
+    environment:
+      - CRITIC_AGENT_URL=http://critic-agent-a2a:8001
+      - REVISER_AGENT_URL=http://reviser-agent-a2a:8001
+      - OPENAI_MODEL_NAME=o3
+    secrets:
+      - openai-api-key
+    depends_on:
+      - critic-agent-a2a
+      - reviser-agent-a2a
+
+  critic-agent-a2a:
+    build:
+      target: critic-agent
+    environment:
+      - MCPGATEWAY_ENDPOINT=http://mcp-gateway:8811/sse
+      - OPENAI_MODEL_NAME=o3
+    secrets:
+      - openai-api-key
+    depends_on:
+      - mcp-gateway
+
+  reviser-agent-a2a:
+    build:
+      target: reviser-agent
+    environment:
+      - MCPGATEWAY_ENDPOINT=http://mcp-gateway:8811/sse
+      - OPENAI_MODEL_NAME=o3
+    secrets:
+      - openai-api-key
+    depends_on:
+      - mcp-gateway
+
+  mcp-gateway:
+    # mcp-gateway secures your MCP servers
+    image: docker/mcp-gateway:latest
+    use_api_socket: true
+    command:
+      - --transport=sse
+      - --servers=duckduckgo
+      # add an MCP interceptor to log the responses
+      - --interceptor
+      - after:exec:echo RESPONSE=$(cat) >&2
+
+secrets:
+  openai-api-key:
+    file: secret.openai-api-key

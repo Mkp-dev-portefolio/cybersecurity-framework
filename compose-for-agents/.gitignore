@@ -1,0 +1,6 @@
+**/.DS_Store
+**/.direnv/
+/.vscode/
+/.cursor/
+**/init-secrets.sh
+**/secret.openai-api-key
