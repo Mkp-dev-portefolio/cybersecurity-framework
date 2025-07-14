@@ -1,0 +1,194 @@
+version: '3.8'
+
+# Enterprise PKI Infrastructure with HashiCorp Vault
+# CyberSec Framework - Dual Root CA with Cross-Certification
+
+services:
+  # HashiCorp Vault - PKI Certificate Authority
+  vault:
+    image: hashicorp/vault:1.15.4
+    container_name: cybersec-vault-pki
+    restart: unless-stopped
+    ports:
+      - "8200:8200"
+      - "8201:8201"
+    volumes:
+      # Configuration
+      - ./vault-pki/config/vault-config.hcl:/vault/config/vault.hcl:ro
+      # Persistent data
+      - vault_data:/vault/data
+      - vault_logs:/vault/logs
+      # PKI structure
+      - ./vault-pki:/vault-pki:ro
+      # Initialization data
+      - vault_init_data:/vault-init
+    environment:
+      - VAULT_ADDR=https://0.0.0.0:8200
+      - VAULT_API_ADDR=https://vault:8200
+      - VAULT_CLUSTER_ADDR=https://vault:8201
+      - VAULT_LOG_LEVEL=INFO
+      - VAULT_DEV_ROOT_TOKEN_ID=${VAULT_DEV_ROOT_TOKEN_ID:-}
+      - VAULT_DEV_LISTEN_ADDRESS=${VAULT_DEV_LISTEN_ADDRESS:-}
+    command: vault server -config=/vault/config/vault.hcl
+    cap_add:
+      - IPC_LOCK
+    networks:
+      - cybersec-pki
+    healthcheck:
+      test: ["CMD", "vault", "status"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # PKI Initialization Service
+  vault-init:
+    image: hashicorp/vault:1.15.4
+    container_name: vault-init
+    depends_on:
+      vault:
+        condition: service_healthy
+    volumes:
+      - ./vault-pki/automation/vault-scripts:/scripts:ro
+      - vault_init_data:/vault-init
+      - vault_logs:/vault/logs
+    environment:
+      - VAULT_ADDR=https://vault:8200
+      - VAULT_SKIP_VERIFY=true  # For development only
+    networks:
+      - cybersec-pki
+    command: >
+      sh -c "
+        # Install required tools
+        apk add --no-cache jq curl &&
+        
+        # Wait for Vault to be ready
+        until vault status; do
+          echo 'Waiting for Vault to be ready...'
+          sleep 5
+        done &&
+        
+        # Run PKI setup
+        /scripts/setup-vault-pki.sh
+      "
+    restart: "no"
+
+  # PKI Management Web Interface
+  pki-manager:
+    image: nginx:alpine
+    container_name: pki-manager
+    depends_on:
+      - vault-init
+    ports:
+      - "8080:80"
+    volumes:
+      - ./vault-pki/automation/templates:/usr/share/nginx/html/templates:ro
+      - ./vault-pki/compliance/reports:/usr/share/nginx/html/reports:ro
+      - ./vault-pki/trust-stores:/usr/share/nginx/html/trust-stores:ro
+    networks:
+      - cybersec-pki
+    restart: unless-stopped
+
+  # Certificate Monitor
+  cert-monitor:
+    image: python:3.11-alpine
+    container_name: cert-monitor
+    depends_on:
+      - vault-init
+    volumes:
+      - ./vault-pki/automation/monitoring:/monitoring:ro
+      - ./vault-pki/compliance:/compliance
+      - vault_init_data:/vault-init:ro
+    environment:
+      - VAULT_ADDR=https://vault:8200
+      - VAULT_SKIP_VERIFY=true
+      - MONITORING_INTERVAL=3600
+      - ALERT_WEBHOOK_URL=${ALERT_WEBHOOK_URL:-}
+      - PYTHONUNBUFFERED=1
+    networks:
+      - cybersec-pki
+    command: >
+      sh -c "
+        # Install required packages
+        pip install requests python-dateutil schedule &&
+        
+        # Wait for Vault initialization
+        while [ ! -f /vault-init/vault-token ]; do
+          echo 'Waiting for Vault initialization...'
+          sleep 10
+        done &&
+        
+        # Run certificate monitoring
+        python /monitoring/cert-expiry-monitor.py
+      "
+    restart: unless-stopped
+
+  # PKI Metrics Exporter (Prometheus)
+  pki-metrics:
+    image: prom/node-exporter:latest
+    container_name: pki-metrics
+    depends_on:
+      - vault
+    ports:
+      - "9100:9100"
+    volumes:
+      - ./vault-pki/compliance/reports:/reports:ro
+    networks:
+      - cybersec-pki
+    restart: unless-stopped
+
+  # Redis for PKI caching
+  redis-pki:
+    image: redis:7-alpine
+    container_name: redis-pki
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - cybersec-pki
+    restart: unless-stopped
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-cybersec2024}
+
+  # PostgreSQL for PKI audit logs
+  postgres-pki:
+    image: postgres:15-alpine
+    container_name: postgres-pki
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./vault-pki/compliance/audit-logs:/audit-logs
+    environment:
+      - POSTGRES_DB=pki_audit
+      - POSTGRES_USER=pki_admin
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-cybersec2024}
+    networks:
+      - cybersec-pki
+    restart: unless-stopped
+
+volumes:
+  vault_data:
+    driver: local
+  vault_logs:
+    driver: local
+  vault_init_data:
+    driver: local
+  redis_data:
+    driver: local
+  postgres_data:
+    driver: local
+
+networks:
+  cybersec-pki:
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.20.0.0/16
+    labels:
+      - "com.cybersec.framework=pki"
+      - "com.cybersec.environment=development"
+
+# Development overrides
+# Use: docker-compose -f vault-pki-compose.yml -f vault-pki-compose.dev.yml up
