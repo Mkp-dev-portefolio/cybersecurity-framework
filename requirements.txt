@@ -1,0 +1,65 @@
+# Core dependencies
+aiohttp==3.12.14
+asyncio-mqtt==0.16.1
+asyncpg==0.30.0
+fastapi==0.115.6
+uvicorn==0.34.0
+pydantic==2.10.4
+python-dotenv==1.0.1
+
+# AI and ML
+openai==1.59.0
+langchain==0.3.12
+langchain-core==0.3.22
+langchain-community==0.3.12
+numpy==1.26.4
+pandas==2.2.3
+
+# Cryptography and PKI
+cryptography==44.0.0
+pyOpenSSL==24.3.0
+certifi==2024.12.14
+requests==2.32.3
+
+# Database
+psycopg2-binary==2.9.10
+sqlalchemy==2.0.36
+alembic==1.14.0
+
+# Testing
+pytest==8.4.1
+pytest-asyncio==1.0.0
+pytest-cov==6.0.0
+httpx==0.28.1
+
+# Development tools
+black==24.10.0
+flake8==7.1.1
+mypy==1.14.1
+pre-commit==4.0.1
+
+# Caching
+redis==5.2.1
+aiocache==0.12.3
+
+# Logging and monitoring
+structlog==24.5.0
+prometheus-client==0.21.1
+
+# Security
+bcrypt==4.2.1
+passlib==1.7.4
+python-jose[cryptography]==3.3.0
+
+# Utilities
+click==8.1.7
+rich==13.9.4
+typer==0.15.1
+schedule==1.2.2
+
+# MCP Protocol
+mcp==1.1.0
+
+# Docker and deployment
+docker==7.1.0
+docker-compose==1.29.2
