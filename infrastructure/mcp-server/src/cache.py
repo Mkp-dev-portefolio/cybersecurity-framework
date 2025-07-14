@@ -7,7 +7,7 @@ import json
 import logging
 from typing import Any, Dict, List, Optional, Union
 from datetime import datetime, timedelta
-import aioredis
+import redis.asyncio as redis
 import structlog
 
 logger = structlog.get_logger(__name__)
@@ -24,7 +24,7 @@ class RedisCache:
     async def connect(self):
         """Connect to Redis"""
         try:
-            self.redis = await aioredis.from_url(
+            self.redis = await redis.from_url(
                 self.redis_url,
                 decode_responses=True,
                 retry_on_timeout=True,

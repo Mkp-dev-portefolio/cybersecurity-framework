@@ -1,0 +1,1 @@
+2025-07-14 01:15:53,620 - src.main - ERROR - Failed to initialize services: MCPServer.__init__() got an unexpected keyword argument 'vault_client'
