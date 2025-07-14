@@ -1,0 +1,6 @@
+# Minimal dependencies for quickstart
+asyncio-mqtt==0.16.1
+pydantic==2.10.4
+python-dotenv==1.0.1
+click==8.1.7
+rich==13.9.4
