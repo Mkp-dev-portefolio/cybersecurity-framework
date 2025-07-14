@@ -33,44 +33,57 @@ The framework consists of several key components:
    - Support for multiple AI frameworks (LangGraph, CrewAI, etc.)
    - Ready-to-use agent templates
 
-## Quick Start
+## 🚀 Quick Start
 
-### Prerequisites
+### **New Users: Start Here!**
 
+👉 **[QUICKSTART GUIDE](QUICKSTART.md)** - Build your first security agent in 10 minutes!
+
+The quickstart guide will walk you through:
+- ✅ Setting up your first agent (5 minutes)
+- ✅ Running interactive network scans
+- ✅ Understanding the framework architecture
+- ✅ Building custom security tools
+
+### **Full Framework Setup**
+
+For advanced users who want the complete infrastructure:
+
+#### Prerequisites
 - Docker and Docker Compose
 - Python 3.11+ (for development)
 - Git
 
-### Installation
+#### Installation
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/yourusername/cybersecurity-framework.git
+git clone https://github.com/Mkp-dev-portefolio/cybersecurity-framework.git
 cd cybersecurity-framework
 ```
 
-2. Set up the environment:
+2. **Quick demo** (recommended for first-time users):
+```bash
+# Install minimal dependencies
+pip install -r requirements-quickstart.txt
+
+# Run the interactive quickstart
+python run_quickstart.py
+```
+
+3. **Full setup** (for development):
 ```bash
 # Create virtual environment
 python3 -m venv .venv
 source .venv/bin/activate
 
-# Install dependencies
+# Install all dependencies
 pip install -r requirements.txt
-```
 
-3. Start the services:
-```bash
 # Start all services
 docker-compose -f infrastructure/docker-compose.yml up -d
 
-# Check service status
-docker-compose -f infrastructure/docker-compose.yml ps
-```
-
-4. Run tests:
-```bash
-# Run integration tests
+# Run tests
 pytest tests/test_mcp_integration.py -v
 ```
 
