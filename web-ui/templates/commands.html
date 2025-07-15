@@ -1,0 +1,27 @@
+<div class="commands">
+    <h3>🚀 Quick Start Commands</h3>
+    
+    <h4>1. Request a Certificate using ACME:</h4>
+    <div class="command-line">
+curl -X POST http://localhost:8889/acme/new-order \
+  -H "Content-Type: application/jose+json" \
+  -d '{"identifiers": [{"type": "dns", "value": "example.com"}]}'
+    </div>
+    
+    <h4>2. Check Certificate Status via OCSP:</h4>
+    <div class="command-line">
+curl -X GET http://localhost:8888/ocsp/status/CERTIFICATE_SERIAL
+    </div>
+    
+    <h4>3. Vault PKI Certificate Request:</h4>
+    <div class="command-line">
+curl -X POST http://localhost:8200/v1/pki/issue/cybersec-role \
+  -H "X-Vault-Token: cybersec-dev-token" \
+  -d '{"common_name": "test.cybersec.local", "ttl": "24h"}'
+    </div>
+    
+    <h4>4. Test Agent Integration:</h4>
+    <div class="command-line">
+python demo_agent_vault_integration.py
+    </div>
+</div>

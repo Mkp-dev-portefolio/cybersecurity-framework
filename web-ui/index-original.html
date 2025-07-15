@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CyberSec PKI Management Dashboard</title>
+    <link rel="stylesheet" href="assets/css/main.css">
+</head>
+<body>
+    <div class="container">
+        <h1>🔐 CyberSec PKI Management Dashboard</h1>
+        
+        <div class="service-grid">
+            <div class="service-card">
+                <h3><span class="status-indicator status-unknown"></span>HashiCorp Vault</h3>
+                <p>Certificate Authority and PKI Backend</p>
+                <a href="http://localhost:8200" class="btn" target="_blank">Open Vault UI</a>
+            </div>
+            
+            <div class="service-card">
+                <h3><span class="status-indicator status-unknown"></span>OCSP Server</h3>
+                <p>Certificate Revocation Status Protocol</p>
+                <a href="http://localhost:8888/health" class="btn" target="_blank">Check Health</a>
+            </div>
+            
+            <div class="service-card">
+                <h3><span class="status-indicator status-unknown"></span>ACME Server</h3>
+                <p>Automated Certificate Management</p>
+                <a href="http://localhost:8889/health" class="btn" target="_blank">Check Health</a>
+            </div>
+            
+            <div class="service-card">
+                <h3><span class="status-indicator status-unknown"></span>PKI Metrics</h3>
+                <p>Prometheus Metrics Export</p>
+                <a href="http://localhost:9100" class="btn" target="_blank">View Metrics</a>
+            </div>
+        </div>
+        
+        <div class="commands">
+            <h3>🚀 Quick Start Commands</h3>
+            
+            <h4>1. Request a Certificate using ACME:</h4>
+            <div class="command-line">
+curl -X POST http://localhost:8889/acme/new-order \
+  -H "Content-Type: application/jose+json" \
+  -d '{"identifiers": [{"type": "dns", "value": "example.com"}]}'
+            </div>
+            
+            <h4>2. Check Certificate Status via OCSP:</h4>
+            <div class="command-line">
+curl -X GET http://localhost:8888/ocsp/status/CERTIFICATE_SERIAL
+            </div>
+            
+            <h4>3. Vault PKI Certificate Request:</h4>
+            <div class="command-line">
+curl -X POST http://localhost:8200/v1/pki/issue/cybersec-role \
+  -H "X-Vault-Token: cybersec-dev-token" \
+  -d '{"common_name": "test.cybersec.local", "ttl": "24h"}'
+            </div>
+            
+            <h4>4. Test Agent Integration:</h4>
+            <div class="command-line">
+python demo_agent_vault_integration.py
+            </div>
+        </div>
+        
+        <div class="footer">
+            <p>🔒 CyberSecurity Framework with PKI, OCSP, and ACME Integration</p>
+            <p>Built with HashiCorp Vault, Python, and Docker</p>
+        </div>
+    </div>
+    
+    <script>
+        // Original status check implementation
+        async function checkServiceStatus(url, indicator) {
+            try {
+                const response = await fetch(url, { method: 'GET', mode: 'no-cors' });
+                indicator.className = 'status-indicator status-online';
+            } catch (error) {
+                indicator.className = 'status-indicator status-offline';
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const indicators = document.querySelectorAll('.status-indicator');
+            const urls = [
+                'http://localhost:8200/v1/sys/health',
+                'http://localhost:8888/health',
+                'http://localhost:8889/health',
+                'http://localhost:9100'
+            ];
+            
+            indicators.forEach((indicator, index) => {
+                setTimeout(() => {
+                    checkServiceStatus(urls[index], indicator);
+                }, index * 500);
+            });
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Component Usage Example</title>
+    <link rel="stylesheet" href="assets/css/main.css">
+</head>
+<body>
+    <div style="padding: 20px; background: #f5f5f5;">
+        <h2>Individual Component Examples</h2>
+        
+        <div style="margin-bottom: 30px;">
+            <h3>1. Header Component</h3>
+            <div id="header-example" style="background: white; padding: 20px; border-radius: 8px;"></div>
+        </div>
+        
+        <div style="margin-bottom: 30px;">
+            <h3>2. Single Service Card</h3>
+            <div id="service-card-example" style="background: white; padding: 20px; border-radius: 8px;"></div>
+        </div>
+        
+        <div style="margin-bottom: 30px;">
+            <h3>3. Full Service Grid</h3>
+            <div id="service-grid-example" style="background: white; padding: 20px; border-radius: 8px;"></div>
+        </div>
+        
+        <div style="margin-bottom: 30px;">
+            <h3>4. Footer Component</h3>
+            <div id="footer-example" style="background: white; padding: 20px; border-radius: 8px;"></div>
+        </div>
+    </div>
+    
+    <script src="assets/js/components.js"></script>
+    <script>
+        // Example usage of individual components
+        document.addEventListener('DOMContentLoaded', function() {
+            // Header example
+            document.getElementById('header-example').innerHTML = createHeader();
+            
+            // Single service card example
+            document.getElementById('service-card-example').innerHTML = createServiceCard(
+                'Example Service',
+                'This is a demo service card',
+                'http://localhost:9000',
+                'Open Service',
+                'status-online'
+            );
+            
+            // Service grid example
+            document.getElementById('service-grid-example').innerHTML = createServiceGrid();
+            
+            // Footer example
+            document.getElementById('footer-example').innerHTML = createFooter();
+        });
+    </script>
+</body>
+</html>
