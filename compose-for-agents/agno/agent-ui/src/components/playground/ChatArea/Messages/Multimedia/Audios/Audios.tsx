@@ -52,8 +52,15 @@ AudioItem.displayName = 'AudioItem'
 const Audios = memo(({ audio }: { audio: AudioData[] }) => (
   <div className="flex flex-col gap-4">
     {audio.map((audio_item, index) => (
-      // TODO :: find a better way to handle the key
-      <AudioItem key={audio_item.id ?? `audio-${index}`} audio={audio_item} />
+      <AudioItem
+        key={
+          audio_item.id ??
+          audio_item.url ??
+          (audio_item.base64_audio ?? audio_item.content)?.slice(0, 32) ??
+          `audio-${index}`
+        }
+        audio={audio_item}
+      />
     ))}
   </div>
 ))
