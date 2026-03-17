@@ -1,0 +1,47 @@
+name: Claude Code Assistant
+
+# Responds to @claude mentions in PR comments, issue comments, and PR/issue bodies.
+# Claude can read code, explain things, write fixes, and push commits to the branch.
+#
+# Usage examples in a PR comment:
+#   @claude why does CertificateRevokeTool raise when vault_client is None?
+#   @claude add a unit test for the PKIComplianceCheckTool mock path
+#   @claude fix the mypy error in agents/base/agent.py
+
+on:
+  issue_comment:
+    types: [created, edited]
+  pull_request_review_comment:
+    types: [created, edited]
+  issues:
+    types: [opened, assigned]
+  pull_request:
+    types: [opened, assigned]
+
+jobs:
+  claude:
+    runs-on: ubuntu-latest
+    # Gate: only run when @claude is explicitly mentioned
+    if: |
+      (github.event_name == 'issue_comment'               && contains(github.event.comment.body, '@claude')) ||
+      (github.event_name == 'pull_request_review_comment' && contains(github.event.comment.body, '@claude')) ||
+      (github.event_name == 'issues'       && contains(github.event.issue.body,         '@claude')) ||
+      (github.event_name == 'pull_request' && contains(github.event.pull_request.body,  '@claude'))
+    permissions:
+      contents: write       # needed so Claude can commit fixes to the branch
+      pull-requests: write  # needed to post reply comments
+      issues: write         # needed to reply on issues
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          # Claude reads the @claude mention and acts on it directly.
+          # No explicit prompt — the comment body IS the instruction.
+          claude_args: |
+            --model claude-sonnet-4-6
+            --max-turns 10

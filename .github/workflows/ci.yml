@@ -120,24 +120,70 @@ jobs:
     needs: [test, docker-build, security-scan]
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
-    
+
     steps:
     - uses: actions/checkout@v4
-    
+
     - name: Deploy to staging
       run: |
         echo "Deploying to staging environment..."
         # Add your deployment commands here
         # Example: kubectl apply -f k8s/staging/
-    
+
     - name: Run integration tests
       run: |
         echo "Running integration tests..."
         # Add integration test commands here
-    
+
     - name: Deploy to production
       if: success()
       run: |
         echo "Deploying to production environment..."
         # Add your production deployment commands here
         # Example: kubectl apply -f k8s/production/
+
+  # ---------------------------------------------------------------------------
+  # Claude CI Failure Analysis
+  # Runs ONLY when the test matrix fails on a pull request.
+  # Claude reads the changed files, identifies the likely root cause, and posts
+  # a diagnostic comment so developers don't have to decode raw CI logs.
+  # ---------------------------------------------------------------------------
+  claude-ci-analysis:
+    needs: test
+    runs-on: ubuntu-latest
+    if: failure() && github.event_name == 'pull_request'
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - uses: anthropics/claude-code-action@v1
+      with:
+        anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        use_sticky_comment: "true"
+        prompt: |
+          The CI test job just failed on this pull request for a Python PKI
+          AI agent framework. The failing pipeline runs:
+            1. flake8 linting (syntax errors, undefined names)
+            2. black formatting check
+            3. mypy type checking on agents/ and infrastructure/
+            4. pytest tests/ with a PostgreSQL service
+
+          Steps:
+          1. Run `git diff origin/${{ github.base_ref }}...HEAD --name-only` to list the
+             changed files in this PR.
+          2. Read the most recently changed Python files in agents/ and infrastructure/.
+          3. Read tests/test_mcp_integration.py to understand what is being tested.
+          4. Identify the most likely cause of the failure (lint error, type error,
+             import error, test assertion, missing dependency, etc.).
+          5. Post a short, structured comment with:
+             - **Root cause** (one sentence)
+             - **Affected file(s) and line(s)**
+             - **Suggested fix** (show the corrected code snippet if straightforward)
+
+          Keep the comment under 400 words. Do not paste raw test output.
+          Focus entirely on actionable guidance for the developer.

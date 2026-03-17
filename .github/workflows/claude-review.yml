@@ -1,0 +1,62 @@
+name: Claude PR Review
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches: [main, develop]
+
+jobs:
+  claude-review:
+    runs-on: ubuntu-latest
+    # Skip draft PRs — only review when the PR is ready
+    if: github.event.pull_request.draft == false
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # full history so Claude can diff against the base branch
+
+      - uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          # One sticky comment per PR, updated on each push instead of spamming new comments
+          use_sticky_comment: "true"
+          prompt: |
+            You are reviewing a pull request to a Python PKI (Public Key Infrastructure)
+            AI agent framework. The codebase manages X.509 certificates via HashiCorp Vault,
+            implements MCP (Model Context Protocol) agents, and integrates with commercial
+            CAs (GlobalSign, DigiCert, Entrust). Key source directories:
+              - agents/pki/       – PKI tools (issue, revoke, list, compliance)
+              - agents/base/      – CybersecurityAgent base class and MCP client
+              - infrastructure/mcp-server/src/ – FastAPI MCP server, Vault client, CA providers
+
+            Review ONLY the files changed in this PR. Post a concise, structured review:
+
+            ## 🔐 Security
+            - Hardcoded secrets, tokens, or credentials (incl. Vault tokens, API keys)
+            - Private key or certificate material that could be exposed in logs or responses
+            - Missing validation on certificate fields (CN, SANs, TTL, key usage)
+            - Insecure defaults (e.g. plain HTTP for Vault, wildcard CORS, empty vault token)
+            - User-supplied input that reaches subprocess, shell, or eval without sanitisation
+            - Silent success returns that mask real failures (e.g. revoke without a backend)
+
+            ## 🐛 Correctness
+            - Logic bugs in PKI tool implementations
+            - Async/await issues (missing await, sync blocking in async context)
+            - Exception handling that swallows errors without re-raising or logging
+            - Mock or demo fallbacks that would be silently used in production
+
+            ## 🧹 Code Quality
+            - Public functions/methods without type annotations
+            - Functions that are overly long or complex
+            - Unused imports or dead code
+
+            ## 🧪 Tests
+            - New code paths in agents/ or infrastructure/ not covered by tests/
+            - Existing assertions that could be made more specific
+
+            Use ✅ / ⚠️ / ❌ indicators. Skip sections where there are no findings.
+            Do not echo the diff — focus on actionable feedback only.
