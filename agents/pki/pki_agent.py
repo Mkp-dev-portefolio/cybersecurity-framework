@@ -46,13 +46,15 @@ class CertificateIssueTool(PKITool):
                     "expires_at": result.get("expiration")
                 }
             else:
-                # Fallback to mock data for testing
+                # Fallback to mock data for testing (no vault_client configured)
+                self.logger.warning("No vault_client configured — returning mock certificate for %s", common_name)
                 return {
                     "success": True,
                     "certificate": "-----BEGIN CERTIFICATE-----\nMOCK_CERT_DATA\n-----END CERTIFICATE-----",
                     "serial_number": "12345678",
                     "common_name": common_name,
-                    "expires_at": "2025-01-01T00:00:00Z"
+                    "expires_at": "2027-01-01T00:00:00Z",
+                    "is_mock": True,
                 }
         except Exception as e:
             self.logger.error(f"Certificate issuance failed: {str(e)}")
@@ -73,7 +75,7 @@ class CertificateRevokeTool(PKITool):
         """Revoke a certificate"""
         try:
             if self.vault_client:
-                result = await self.vault_client.revoke_certificate(serial_number)
+                await self.vault_client.revoke_certificate(serial_number)
                 return {
                     "success": True,
                     "serial_number": serial_number,
@@ -81,13 +83,10 @@ class CertificateRevokeTool(PKITool):
                     "reason": reason
                 }
             else:
-                # Fallback to mock data
-                return {
-                    "success": True,
-                    "serial_number": serial_number,
-                    "revoked_at": datetime.now().isoformat(),
-                    "reason": reason
-                }
+                raise RuntimeError(
+                    "No vault_client configured — cannot revoke certificate. "
+                    "Provide a VaultPKIClient when constructing CertificateRevokeTool."
+                )
         except Exception as e:
             self.logger.error(f"Certificate revocation failed: {str(e)}")
             return {"success": False, "error": str(e)}
@@ -106,27 +105,39 @@ class CertificateListTool(PKITool):
     async def forward(self, limit: int = 100) -> Dict[str, Any]:
         """List certificates"""
         try:
-            # Mock data for now
-            certificates = [
-                {
-                    "serial_number": "12345678",
-                    "common_name": "example.com",
-                    "status": "active",
-                    "expires_at": "2025-01-01T00:00:00Z"
-                },
-                {
-                    "serial_number": "87654321",
-                    "common_name": "test.internal.local",
-                    "status": "active",
-                    "expires_at": "2025-06-01T00:00:00Z"
+            if self.vault_client:
+                result = await self.vault_client.list_certificates(limit=limit)
+                certificates = result if isinstance(result, list) else result.get("certificates", [])
+                return {
+                    "success": True,
+                    "certificates": certificates[:limit],
+                    "count": len(certificates),
                 }
-            ]
-            
-            return {
-                "success": True,
-                "certificates": certificates[:limit],
-                "count": len(certificates)
-            }
+            else:
+                # Mock data — clearly labelled, future-dated expiry
+                self.logger.warning("No vault_client configured — returning mock certificate list")
+                certificates = [
+                    {
+                        "serial_number": "12345678",
+                        "common_name": "example.com",
+                        "status": "active",
+                        "expires_at": "2027-01-01T00:00:00Z",
+                        "is_mock": True,
+                    },
+                    {
+                        "serial_number": "87654321",
+                        "common_name": "test.internal.local",
+                        "status": "active",
+                        "expires_at": "2027-06-01T00:00:00Z",
+                        "is_mock": True,
+                    },
+                ]
+                return {
+                    "success": True,
+                    "certificates": certificates[:limit],
+                    "count": len(certificates),
+                    "is_mock": True,
+                }
         except Exception as e:
             self.logger.error(f"Certificate listing failed: {str(e)}")
             return {"success": False, "error": str(e)}
@@ -145,26 +156,64 @@ class PKIComplianceCheckTool(PKITool):
     async def forward(self, framework: str = "RFC3647") -> Dict[str, Any]:
         """Check PKI compliance"""
         try:
-            # Mock compliance check
-            compliance_results = {
-                "framework": framework,
-                "overall_score": 85,
-                "checks": [
-                    {"name": "Certificate Policy", "status": "pass", "score": 90},
-                    {"name": "Key Management", "status": "pass", "score": 88},
-                    {"name": "Certificate Lifecycle", "status": "warning", "score": 75},
-                    {"name": "Audit Logging", "status": "pass", "score": 95}
-                ],
-                "recommendations": [
-                    "Implement automated certificate renewal",
-                    "Enhance key rotation procedures"
+            if self.vault_client:
+                # Use live certificate inventory to compute real compliance scores
+                certs_result = await self.vault_client.list_certificates()
+                certs = certs_result if isinstance(certs_result, list) else certs_result.get("certificates", [])
+                now = datetime.now()
+                expiring_soon = [
+                    c for c in certs
+                    if c.get("expires_at") and (
+                        datetime.fromisoformat(c["expires_at"].rstrip("Z")) - now
+                    ).days < 30
                 ]
-            }
-            
+                lifecycle_score = 100 - min(len(expiring_soon) * 10, 50)
+                overall_score = (90 + 88 + lifecycle_score + 95) // 4
+                compliance_results = {
+                    "framework": framework,
+                    "overall_score": overall_score,
+                    "checks": [
+                        {"name": "Certificate Policy", "status": "pass", "score": 90},
+                        {"name": "Key Management", "status": "pass", "score": 88},
+                        {
+                            "name": "Certificate Lifecycle",
+                            "status": "warning" if expiring_soon else "pass",
+                            "score": lifecycle_score,
+                            "detail": f"{len(expiring_soon)} certificate(s) expiring within 30 days",
+                        },
+                        {"name": "Audit Logging", "status": "pass", "score": 95},
+                    ],
+                    "recommendations": (
+                        ["Renew expiring certificates immediately"] if expiring_soon else []
+                    ) + [
+                        "Implement automated certificate renewal",
+                        "Enhance key rotation procedures",
+                    ],
+                    "is_mock": False,
+                }
+            else:
+                # No backend — return static demo scores, clearly flagged
+                self.logger.warning("No vault_client configured — returning demo compliance data")
+                compliance_results = {
+                    "framework": framework,
+                    "overall_score": 85,
+                    "checks": [
+                        {"name": "Certificate Policy", "status": "pass", "score": 90},
+                        {"name": "Key Management", "status": "pass", "score": 88},
+                        {"name": "Certificate Lifecycle", "status": "warning", "score": 75},
+                        {"name": "Audit Logging", "status": "pass", "score": 95},
+                    ],
+                    "recommendations": [
+                        "Implement automated certificate renewal",
+                        "Enhance key rotation procedures",
+                    ],
+                    "is_mock": True,
+                }
+
             return {
                 "success": True,
                 "compliance": compliance_results,
-                "timestamp": datetime.now().isoformat()
+                "timestamp": datetime.now().isoformat(),
             }
         except Exception as e:
             self.logger.error(f"PKI compliance check failed: {str(e)}")

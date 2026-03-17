@@ -69,32 +69,53 @@ async def initialize_services():
     try:
         # Initialize Vault client
         vault_addr = os.getenv("VAULT_ADDR", "http://vault:8200")
-        vault_token = os.getenv("VAULT_TOKEN", "root")
+        vault_token = os.getenv("VAULT_TOKEN")
+        if not vault_token:
+            logger.warning(
+                "VAULT_TOKEN is not set — Vault PKI operations will fail. "
+                "Set the VAULT_TOKEN environment variable."
+            )
+            vault_token = ""
         vault_client = VaultPKIClient(vault_addr, vault_token)
-        
-        # Initialize database
-        postgres_url = os.getenv("POSTGRES_URL", "postgresql://mcp_user:mcp_password@postgres:5432/mcp_pki")
+
+        # Initialize database — POSTGRES_URL is required
+        postgres_url = os.getenv("POSTGRES_URL")
+        if not postgres_url:
+            raise RuntimeError(
+                "POSTGRES_URL environment variable is required. "
+                "Example: postgresql://user:password@postgres:5432/mcp_pki"
+            )
         database = Database(postgres_url)
         await database.connect()
-        
+
         # Initialize cache
         redis_url = os.getenv("REDIS_URL", "redis://redis:6379")
         cache = RedisCache(redis_url)
         await cache.connect()
-        
-        # Initialize CA providers
+
+        # Initialize CA providers — missing keys produce a warning, not silent demo usage
+        def _require_env(var: str, provider: str) -> str:
+            val = os.getenv(var, "")
+            if not val:
+                logger.warning(
+                    "%s is not set — %s provider will not function correctly.",
+                    var,
+                    provider,
+                )
+            return val
+
         ca_providers = {
             "globalsign": GlobalSignProvider(
-                api_key=os.getenv("GLOBALSIGN_API_KEY", "demo_key"),
-                api_secret=os.getenv("GLOBALSIGN_API_SECRET", "demo_secret")
+                api_key=_require_env("GLOBALSIGN_API_KEY", "GlobalSign"),
+                api_secret=_require_env("GLOBALSIGN_API_SECRET", "GlobalSign"),
             ),
             "digicert": DigiCertProvider(
-                api_key=os.getenv("DIGICERT_API_KEY", "demo_key")
+                api_key=_require_env("DIGICERT_API_KEY", "DigiCert"),
             ),
             "entrust": EntrustProvider(
-                api_key=os.getenv("ENTRUST_API_KEY", "demo_key"),
-                api_secret=os.getenv("ENTRUST_API_SECRET", "demo_secret")
-            )
+                api_key=_require_env("ENTRUST_API_KEY", "Entrust"),
+                api_secret=_require_env("ENTRUST_API_SECRET", "Entrust"),
+            ),
         }
         
         # Initialize MCP server

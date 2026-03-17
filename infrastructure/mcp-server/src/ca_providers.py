@@ -45,17 +45,17 @@ class CAProvider(ABC):
     @abstractmethod
     async def issue_certificate(self, **kwargs) -> Dict[str, Any]:
         """Issue a certificate"""
-        pass
-        
+        raise NotImplementedError(f"{self.__class__.__name__} must implement issue_certificate()")
+
     @abstractmethod
     async def revoke_certificate(self, **kwargs) -> Dict[str, Any]:
         """Revoke a certificate"""
-        pass
-        
+        raise NotImplementedError(f"{self.__class__.__name__} must implement revoke_certificate()")
+
     @abstractmethod
     async def get_certificate(self, **kwargs) -> Dict[str, Any]:
         """Get certificate details"""
-        pass
+        raise NotImplementedError(f"{self.__class__.__name__} must implement get_certificate()")
 
 
 class GlobalSignProvider(CAProvider):
