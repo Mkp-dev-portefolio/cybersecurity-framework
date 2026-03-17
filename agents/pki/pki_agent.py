@@ -3,7 +3,7 @@ PKI Agent with smolagents and MCP integration
 """
 
 from typing import List, Dict, Any, Optional
-from datetime import datetime
+from datetime import datetime, timezone
 import logging
 
 from smolagents.tools import Tool
@@ -160,11 +160,11 @@ class PKIComplianceCheckTool(PKITool):
                 # Use live certificate inventory to compute real compliance scores
                 certs_result = await self.vault_client.list_certificates()
                 certs = certs_result if isinstance(certs_result, list) else certs_result.get("certificates", [])
-                now = datetime.now()
+                now = datetime.now(tz=timezone.utc)
                 expiring_soon = [
                     c for c in certs
                     if c.get("expires_at") and (
-                        datetime.fromisoformat(c["expires_at"].rstrip("Z")) - now
+                        datetime.fromisoformat(c["expires_at"].replace("Z", "+00:00")) - now
                     ).days < 30
                 ]
                 lifecycle_score = 100 - min(len(expiring_soon) * 10, 50)
