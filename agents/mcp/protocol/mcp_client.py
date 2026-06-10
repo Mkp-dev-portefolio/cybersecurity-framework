@@ -77,14 +77,6 @@ class MCPClient:
     # Internal helpers
     # ------------------------------------------------------------------
 
-    def _ensure_connected(self) -> aiohttp.ClientSession:
-        """Return the session, opening it lazily if needed."""
-        if self._session is None or self._session.closed:
-            import asyncio
-            loop = asyncio.get_event_loop()
-            loop.run_until_complete(self.connect())
-        return self._session  # type: ignore[return-value]
-
     async def _get_session(self) -> aiohttp.ClientSession:
         """Return the session, creating it lazily if not yet open."""
         if self._session is None or self._session.closed:
@@ -123,8 +115,8 @@ class MCPClient:
         Raises:
             RuntimeError: If the gateway returns a non-200 response.
         """
-        session = await self._get_session()
         try:
+            session = await self._get_session()
             async with session.post(f"{self.gateway_url}/mcp/tools/list") as resp:
                 if resp.status != 200:
                     text = await resp.text()
@@ -163,9 +155,9 @@ class MCPClient:
         Raises:
             RuntimeError: If the gateway returns an error response.
         """
-        session = await self._get_session()
         payload = {"name": name, "arguments": arguments}
         try:
+            session = await self._get_session()
             async with session.post(
                 f"{self.gateway_url}/mcp/tools/call", json=payload
             ) as resp:
@@ -186,7 +178,7 @@ class MCPClient:
                 raise RuntimeError(
                     f"MCP tool '{name}' reported failure: {result.get('error', 'unknown error')}"
                 )
-            return result.get("data", result)
+            return result.get("data")
 
         return result
 

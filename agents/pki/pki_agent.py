@@ -79,7 +79,7 @@ class CertificateRevokeTool(PKITool):
                 return {
                     "success": True,
                     "serial_number": serial_number,
-                    "revoked_at": datetime.now().isoformat(),
+                    "revoked_at": datetime.now(tz=timezone.utc).isoformat(),
                     "reason": reason
                 }
             else:
@@ -106,7 +106,7 @@ class CertificateListTool(PKITool):
         """List certificates"""
         try:
             if self.vault_client:
-                result = await self.vault_client.list_certificates(limit=limit)
+                result = await self.vault_client.list_certificates()
                 certificates = result if isinstance(result, list) else result.get("certificates", [])
                 return {
                     "success": True,
@@ -213,7 +213,7 @@ class PKIComplianceCheckTool(PKITool):
             return {
                 "success": True,
                 "compliance": compliance_results,
-                "timestamp": datetime.now().isoformat(),
+                "timestamp": datetime.now(tz=timezone.utc).isoformat(),
             }
         except Exception as e:
             self.logger.error(f"PKI compliance check failed: {str(e)}")

@@ -260,29 +260,14 @@ async def revoke_certificate(request: dict):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@app.get("/certificates/{certificate_id}")
-async def get_certificate(certificate_id: str):
-    """Get certificate details"""
-    if not mcp_server:
-        raise HTTPException(status_code=503, detail="MCP server not initialized")
-    
-    try:
-        result = await mcp_server.call_tool(
-            name="get_certificate",
-            arguments={"certificate_id": certificate_id}
-        )
-        return result
-    except Exception as e:
-        logger.error(f"Failed to get certificate: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-
+# Static routes registered before the /{certificate_id} wildcard so FastAPI
+# matches them first; wildcard routes shadow any static paths registered after.
 @app.get("/certificates/inventory", response_model=CertificateInventoryResponse)
 async def get_certificate_inventory():
     """Get certificate inventory"""
     if not mcp_server:
         raise HTTPException(status_code=503, detail="MCP server not initialized")
-    
+
     try:
         result = await mcp_server.call_tool(
             name="get_certificate_inventory",
@@ -299,7 +284,7 @@ async def get_certificate_analysis():
     """Get certificate analysis"""
     if not mcp_server:
         raise HTTPException(status_code=503, detail="MCP server not initialized")
-    
+
     try:
         result = await mcp_server.call_tool(
             name="analyze_certificates",
